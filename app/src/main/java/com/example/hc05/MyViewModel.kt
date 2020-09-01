@@ -19,6 +19,9 @@ class MyViewModel : ViewModel() {
     var indexstartbyte = 0
     var weightlivedata = MutableLiveData<Int>()
     var replivedata = MutableLiveData<Int>()
+    var numBytes = 0
+    var weight = 0
+    var rep = 0
 
     init {
         weightlivedata.value = 0
@@ -26,7 +29,7 @@ class MyViewModel : ViewModel() {
     }
 
     private fun readData() {
-        println ("every 200ms once")
+        println("every 200ms once")
         var inStream = MainActivity.btSocket.inputStream
         try {
             inStream = MainActivity.btSocket.inputStream
@@ -36,10 +39,14 @@ class MyViewModel : ViewModel() {
 //假如buffer內有資料就先處理, 再去讀取
 
 
+        val buffer: ByteArray = ByteArray(1024)
+        try {
+            numBytes = inStream.read(buffer)  // bytes returned from read()
+            println("numBytes = $numBytes")
+        } catch (e: Exception) {
+            println("buffer = null, $e")
+        }
 
-        val buffer: ByteArray = ByteArray(100)
-        val numBytes = inStream.read(buffer)  // bytes returned from read()
-        println("numBytes = $numBytes")
         for (i in 0..numBytes - 1) {   //先知道nubBytes的數字再去讀
             if (buffer[i].toInt() >= 0) {
                 readResult.add(buffer[i].toString())
@@ -52,10 +59,12 @@ class MyViewModel : ViewModel() {
         if (readResult.size >= 90) {
             readResult.clear()
         } else {
-            if (readResult.size >= 9) {
-                ParserStart()
+            while (readResult.size >= 9) {
+                ParserStart()       //印出正常處理
                 println(readResult)
             }
+            weightlivedata.value = weight       //更新ui
+            replivedata.value = rep
         }
     }  // Read data end
 
@@ -87,22 +96,22 @@ class MyViewModel : ViewModel() {
         //讀重量
         var weightHibyte = readResult[indexstartbyte + 3].toInt()
         var weightLobyte = readResult[indexstartbyte + 4].toInt()
-        var weight = (256 * weightHibyte + weightLobyte).toInt()
-        weightlivedata.value = weight
+        weight = (256 * weightHibyte + weightLobyte).toInt()
+        //      weightlivedata.value = weight
         //讀次數
         var repHibyte = readResult[indexstartbyte + 5].toInt()
         var repLobyte = readResult[indexstartbyte + 6].toInt()
-        var rep = 256 * repHibyte + repLobyte
-        replivedata.value = rep
+        rep = 256 * repHibyte + repLobyte
+//        replivedata.value = rep
 
-        for (i in 0..8) {
+        for (i in 0..indexstartbyte + 8) {
             readResult.removeAt(0)          //清除已處理的資料
         }
-
+        println("正常處理")
     }
 
     fun delRangeofArrayData(arr: ArrayList<String>, startIndex: Int, num: Int) {
-  println ("err1 = $arr")
+        println("err1 = $arr")
         for (i in 0..startIndex + num) {          //刪除 從頭刪到index + num的值
             arr.removeAt(0)
         }
@@ -121,8 +130,8 @@ class MyViewModel : ViewModel() {
     }
 
     suspend fun delay200ms() {
-        println ("pre 200ms")
-        delay(timeMillis = 500)
+        println("pre 200ms")
+        delay(timeMillis = 200)
         readData()
         readableEnable = true
         reReadListenKey.value = reReadListenKey.value
