@@ -31,11 +31,7 @@ class MainActivity : AppCompatActivity() {
     //        myViewModel.job.cancel()
     //    }
 
-if (myViewModel.isPowerOn == false) {
-    myViewModel.isPowerOn = true
-    myViewModel.CheckBt()
-    myViewModel.Connect()
-}
+
   //     writeData("1")
    //     myViewModel.init()
 
@@ -44,14 +40,42 @@ if (myViewModel.isPowerOn == false) {
        if ( myViewModel.readableEnable == true  ){
             myViewModel.init()}
         })
-
+//按鍵處理
         btn1.setOnClickListener {
-            if (myViewModel.coroutineisactived == false) {
-            myViewModel.init()            //注意讀寫都去協程做
-            myViewModel.readableEnable == true
-            myViewModel.coroutineisactived = true } //啟動協程旗號
+            if (myViewModel.btconnectstates == true) {          //連線成功才按
+                if (myViewModel.coroutineisactived == false) {
+                    myViewModel.init()            //注意讀寫都去協程做
+                    myViewModel.readableEnable == true
+                    myViewModel.coroutineisactived = true
+                } //啟動協程旗號
+            }
+        }
+//按鍵處理
+        btnConnect.setOnClickListener {
+    //        if (myViewModel.isPowerOn == false) {
+            Log.d(TAG, "btSceket before close: ${myViewModel.btSocket} ")
+              if (myViewModel.btSocket != null){       // 有Socket 就不要再開了
+                   Log.d(TAG, "btsocket!=null>>>haha ")
+                      myViewModel.job.cancel()  //這個協程要關不然會當掉
+                      myViewModel.btSocket!!.close()
+                  myViewModel.btSocket = null
+                  Toast.makeText(this, "close socket", Toast.LENGTH_SHORT).show()
+                   Log.d(TAG, "btSceket after close: ${myViewModel.btSocket} ")
+               }  else {
+          // wait 2sec 再連接, 因為發生了錯誤了 (不要馬上關馬上連會有問題的）
+                  Toast.makeText(this, "Open Socket", Toast.LENGTH_SHORT).show()
+                myViewModel.isPowerOn = true
+                  myViewModel.err01 = false
+                    myViewModel.CheckBt()
+                    myViewModel.Connect()
+                    if (myViewModel.btconnectstates == true)
+                    {
+                        myViewModel.init()
+                    }}
         }
 
+
+        //監控資料變化
         myViewModel.weightlivedata.observe(this, androidx.lifecycle.Observer {
             textViewWeight.text = myViewModel.weightlivedata.value.toString()
         })

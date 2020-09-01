@@ -8,8 +8,6 @@ import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.hc05.MyViewModel.Companion.btSocket
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,11 +16,13 @@ import java.io.IOException
 import java.util.*
 import kotlin.collections.ArrayList
 
+val TAG = "myTag"
 // 55 3F 04 00 14 00 05 A3 90
 
 class MyViewModel : ViewModel() {
     var isPowerOn = false
     var coroutineisactived = false
+    var btconnectstates = false
     val TAG = "myTag"
     var readableEnable = false
     val reReadListenKey = MutableLiveData<Boolean>()
@@ -33,115 +33,148 @@ class MyViewModel : ViewModel() {
     var numBytes = 0
     var weight = 0
     var rep = 0
+    var keepalivetime = 0
     lateinit var context: Context
-    lateinit var job:Job
+    lateinit var job: Job
+    var err01 = false
+    var buffer: ByteArray = ByteArray(1024)
 
     init {
         weightlivedata.value = 0
         replivedata.value = 0
-    }
-
-    companion object {
-        lateinit var mBluetoothAdapter:BluetoothAdapter
-        lateinit var btSocket: BluetoothSocket
-        //      lateinit var bytes:ByteArray
-
-        //       val myUUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
-        var myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     }
-     fun CheckBt() {
+
+    lateinit var mBluetoothAdapter: BluetoothAdapter
+    var btSocket: BluetoothSocket? = null
+    //      lateinit var bytes:ByteArray
+
+    //       val myUUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
+    var myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+
+    fun CheckBt() {
         Toast.makeText(context, "It has started", Toast.LENGTH_SHORT).show()
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
         if (!mBluetoothAdapter.enable()) {
             Toast.makeText(context, "Bluetooth Disabled !", Toast.LENGTH_SHORT).show()
             /* It tests if the bluetooth is enabled or not, if not the app will show a message. */
-         //   finish()
+            //   finish()
         }
         if (mBluetoothAdapter == null) {
             Toast.makeText(context, "Bluetooth null !", Toast.LENGTH_SHORT).show()
         }
     }
+
     fun Connect() {
         val device = mBluetoothAdapter.getRemoteDevice(BT_MAC)   //Renox10 mac  配對
-        Log.d("", "Connecting to ... $device")
-        Toast.makeText(context, "Connecting to ... ${device.name} mac: ${device.uuids[0]} address: ${device.address}", Toast.LENGTH_LONG).show()
+        Log.d(TAG, "Connecting to ... $device")
+        Toast.makeText(
+            context,
+            "Connecting to ... ${device.name} mac: ${device.uuids[0]} address: ${device.address}",
+            Toast.LENGTH_LONG
+        ).show()
         mBluetoothAdapter.cancelDiscovery()
         try {
+            Log.d(TAG, "btScoket2: ${btSocket} ")
             btSocket = device.createRfcommSocketToServiceRecord(myUUID)
             /* Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that */
-            btSocket.connect()
-            Log.d("", "Connection made.")
+            Log.d(TAG, "btScoket: ${btSocket} ")
+            btSocket?.connect()
+            btconnectstates = true
+            Log.d(TAG, "Connection made.")
             Toast.makeText(context, "Connection made.", Toast.LENGTH_SHORT).show()
         } catch (e: IOException) {
             try {
-                btSocket.close()
+                btSocket?.close()
+                btconnectstates = false
+
             } catch (e2: IOException) {
-                Log.d("", "Unable to end the connection")
+                Log.d(TAG, "Unable to end the connection")
                 Toast.makeText(context, "Unable to end the connection", Toast.LENGTH_SHORT).show()
             }
-            Log.d("", "Socket creation failed")
+            Log.d(TAG, "Socket creation failed")
             Toast.makeText(context, "Socket creation failed", Toast.LENGTH_SHORT).show()
         }
         //beginListenForData()
         /* this is a method used to read what the Arduino says for example when you write Serial.print("Hello world.") in your Arduino code */
     }
-//===============
-private fun writeData(data: String) {
-    var outStream = btSocket.outputStream
-    try {
-        outStream = btSocket.outputStream
-    } catch (e: IOException) {
-        //Log.d(FragmentActivity.TAG, "Bug BEFORE Sending stuff", e)
+
+    //===============
+    private fun writeData(data: String) {
+        var outStream = btSocket?.outputStream
+        try {
+            outStream = btSocket?.outputStream
+        } catch (e: IOException) {
+            //Log.d(FragmentActivity.TAG, "Bug BEFORE Sending stuff", e)
+        }
+        val msgBuffer = data.toByteArray()
+        try {
+            outStream?.write(msgBuffer)
+        } catch (e: IOException) {
+            //Log.d(FragmentActivity.TAG, "Bug while sending stuff", e)
+        }
     }
-    val msgBuffer = data.toByteArray()
-    try {
-        outStream.write(msgBuffer)
-    } catch (e: IOException) {
-        //Log.d(FragmentActivity.TAG, "Bug while sending stuff", e)
-    }
-}
+
     //=====================
     private fun readData() {
-        println("every 200ms once")
-        var inStream = btSocket.inputStream
+        //是否加keepalive , 不然我不知道它斷了, 我直接斷它的電
+        //    Log.d(TAG, "btScoket10:${btSocket?}")
+        //      if (btSocket!!.isConnected) {
+
+         var inStream = btSocket?.inputStream
+        //         Log.d(TAG, "inStream: $inStream")
+
         try {
-            inStream = btSocket.inputStream
+            inStream = btSocket?.inputStream
         } catch (e: IOException) {
             println(e.printStackTrace())
+            Log.d(TAG, "IOException0: ${e.printStackTrace()}")
         }
 //假如buffer內有資料就先處理, 再去讀取
 
-
-        val buffer: ByteArray = ByteArray(1024)
         try {
-            numBytes = inStream.read(buffer)  // bytes returned from read()
-            println("numBytes = $numBytes")
+            if (err01 == false) {
+                numBytes = inStream!!.read(buffer)  // bytes returned from read()
+                Log.d(TAG, "numBytes = $numBytes")
+            }
         } catch (e: Exception) {
-            println("buffer = null, $e")
+   //         Log.d(TAG, "numBytes = $numBytes")
+   //         Log.d(TAG, "buffer = $buffer, $e")
+            Log.d(TAG, "IOException1:")
+            Toast.makeText(context, "斷線了", Toast.LENGTH_SHORT).show()
+            err01 = true
+            //處理異常
+         //   job.cancel()                   // 取消協程
+         //   btSocket?.close()             //關閉連線
         }
 
-        for (i in 0..numBytes - 1) {   //先知道nubBytes的數字再去讀
-            if (buffer[i].toInt() >= 0) {
-                readResult.add(buffer[i].toString())
-            } else {                //負數處理
-                val b1 = 256 + buffer[i].toInt()
-                readResult.add(b1.toString())
-            }
 
-        }
-        if (readResult.size >= 90) {
-            readResult.clear()
-        } else {
-            while (readResult.size >= 9) {
-                ParserStart()       //印出正常處理
-                println(readResult)
+        if (err01 != true) {           //沒有error 才做
+//發生了exception 你還往下執行你是頭腦壞了嗎？
+            for (i in 0..numBytes - 1) {   //先知道nubBytes的數字再去讀
+                if (buffer[i].toInt() >= 0) {
+                    readResult.add(buffer[i].toString())
+                } else {                //負數處理
+                    val b1 = 256 + buffer[i].toInt()
+                    readResult.add(b1.toString())
+                }
+
             }
-            weightlivedata.value = weight       //更新ui
-            replivedata.value = rep
-        }
+            if (readResult.size >= 90) {
+                readResult.clear()
+            } else {
+                while (readResult.size >= 9) {
+                    ParserStart()       //印出正常處理
+                    println(readResult)
+                }
+                weightlivedata.value = weight       //更新ui
+                replivedata.value = rep
+            }
+        } //if end
     }  // Read data end
 
+//=================================================================
 
     //  函式開始
 
@@ -204,10 +237,14 @@ private fun writeData(data: String) {
     }
 
     suspend fun delay200ms() {
-        println("pre 200ms")
-        delay(timeMillis = 200)
-        readData()
-        readableEnable = true
-        reReadListenKey.value = reReadListenKey.value
+        Log.d(TAG, "delay200ms: ")
+         delay(timeMillis = 200)
+        if (err01 != true) {              //都不能發生異常情況才執行
+            readData()
+            keepalivetime++
+            keepalivetime = 0
+            readableEnable = true
+            reReadListenKey.value = reReadListenKey.value
+        }
     }
 }
