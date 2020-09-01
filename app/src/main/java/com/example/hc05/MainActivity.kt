@@ -24,6 +24,13 @@ class MainActivity : AppCompatActivity() {
 //       setContentView(R.layout.activity_main)
         val myViewModel = ViewModelProvider(this).get(MyViewModel::class.java)
         myViewModel.context = this
+      if (myViewModel.coroutineisactived==true){
+            myViewModel.job.cancel()
+       }
+    //    if (myViewModel.isPowerOn == true)  {           //第1次關閉協程
+    //        myViewModel.job.cancel()
+    //    }
+
 if (myViewModel.isPowerOn == false) {
     myViewModel.isPowerOn = true
     myViewModel.CheckBt()
@@ -39,8 +46,10 @@ if (myViewModel.isPowerOn == false) {
         })
 
         btn1.setOnClickListener {
+            if (myViewModel.coroutineisactived == false) {
             myViewModel.init()            //注意讀寫都去協程做
             myViewModel.readableEnable == true
+            myViewModel.coroutineisactived = true } //啟動協程旗號
         }
 
         myViewModel.weightlivedata.observe(this, androidx.lifecycle.Observer {

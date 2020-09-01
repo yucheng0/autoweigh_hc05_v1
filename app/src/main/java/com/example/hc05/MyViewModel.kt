@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hc05.MyViewModel.Companion.btSocket
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -21,6 +22,7 @@ import kotlin.collections.ArrayList
 
 class MyViewModel : ViewModel() {
     var isPowerOn = false
+    var coroutineisactived = false
     val TAG = "myTag"
     var readableEnable = false
     val reReadListenKey = MutableLiveData<Boolean>()
@@ -32,6 +34,7 @@ class MyViewModel : ViewModel() {
     var weight = 0
     var rep = 0
     lateinit var context: Context
+    lateinit var job:Job
 
     init {
         weightlivedata.value = 0
@@ -193,7 +196,7 @@ private fun writeData(data: String) {
     //清除及搬移
 
     fun init() {
-        viewModelScope.launch(Dispatchers.Main) {
+        job = viewModelScope.launch(Dispatchers.Main) {
             delay200ms()
         }
 // 先執行再delay
