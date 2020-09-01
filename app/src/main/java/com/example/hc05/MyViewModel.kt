@@ -1,17 +1,26 @@
 package com.example.hc05
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothSocket
+import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hc05.MyViewModel.Companion.btSocket
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.util.*
+import kotlin.collections.ArrayList
 
 // 55 3F 04 00 14 00 05 A3 90
 
 class MyViewModel : ViewModel() {
+    var isPowerOn = false
     val TAG = "myTag"
     var readableEnable = false
     val reReadListenKey = MutableLiveData<Boolean>()
@@ -22,17 +31,79 @@ class MyViewModel : ViewModel() {
     var numBytes = 0
     var weight = 0
     var rep = 0
+    lateinit var context: Context
 
     init {
         weightlivedata.value = 0
         replivedata.value = 0
     }
 
+    companion object {
+        lateinit var mBluetoothAdapter:BluetoothAdapter
+        lateinit var btSocket: BluetoothSocket
+        //      lateinit var bytes:ByteArray
+
+        //       val myUUID = UUID.fromString("8989063a-c9af-463a-b3f1-f21d9b2b827b")
+        var myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+    }
+     fun CheckBt() {
+        Toast.makeText(context, "It has started", Toast.LENGTH_SHORT).show()
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        if (!mBluetoothAdapter.enable()) {
+            Toast.makeText(context, "Bluetooth Disabled !", Toast.LENGTH_SHORT).show()
+            /* It tests if the bluetooth is enabled or not, if not the app will show a message. */
+         //   finish()
+        }
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(context, "Bluetooth null !", Toast.LENGTH_SHORT).show()
+        }
+    }
+    fun Connect() {
+        val device = mBluetoothAdapter.getRemoteDevice(BT_MAC)   //Renox10 mac  配對
+        Log.d("", "Connecting to ... $device")
+        Toast.makeText(context, "Connecting to ... ${device.name} mac: ${device.uuids[0]} address: ${device.address}", Toast.LENGTH_LONG).show()
+        mBluetoothAdapter.cancelDiscovery()
+        try {
+            btSocket = device.createRfcommSocketToServiceRecord(myUUID)
+            /* Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that */
+            btSocket.connect()
+            Log.d("", "Connection made.")
+            Toast.makeText(context, "Connection made.", Toast.LENGTH_SHORT).show()
+        } catch (e: IOException) {
+            try {
+                btSocket.close()
+            } catch (e2: IOException) {
+                Log.d("", "Unable to end the connection")
+                Toast.makeText(context, "Unable to end the connection", Toast.LENGTH_SHORT).show()
+            }
+            Log.d("", "Socket creation failed")
+            Toast.makeText(context, "Socket creation failed", Toast.LENGTH_SHORT).show()
+        }
+        //beginListenForData()
+        /* this is a method used to read what the Arduino says for example when you write Serial.print("Hello world.") in your Arduino code */
+    }
+//===============
+private fun writeData(data: String) {
+    var outStream = btSocket.outputStream
+    try {
+        outStream = btSocket.outputStream
+    } catch (e: IOException) {
+        //Log.d(FragmentActivity.TAG, "Bug BEFORE Sending stuff", e)
+    }
+    val msgBuffer = data.toByteArray()
+    try {
+        outStream.write(msgBuffer)
+    } catch (e: IOException) {
+        //Log.d(FragmentActivity.TAG, "Bug while sending stuff", e)
+    }
+}
+    //=====================
     private fun readData() {
         println("every 200ms once")
-        var inStream = MainActivity.btSocket.inputStream
+        var inStream = btSocket.inputStream
         try {
-            inStream = MainActivity.btSocket.inputStream
+            inStream = btSocket.inputStream
         } catch (e: IOException) {
             println(e.printStackTrace())
         }
