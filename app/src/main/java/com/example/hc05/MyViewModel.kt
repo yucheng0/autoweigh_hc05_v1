@@ -35,7 +35,7 @@ class MyViewModel : ViewModel() {
     var rep = 0
     var keepalivetime = 0
     lateinit var context: Context
-    lateinit var job: Job
+    var job: Job? = null
     var err01 = false
     var buffer: ByteArray = ByteArray(1024)
 
@@ -54,6 +54,7 @@ class MyViewModel : ViewModel() {
 
 
     fun CheckBt() {
+
         Toast.makeText(context, "It has started", Toast.LENGTH_SHORT).show()
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
         if (!mBluetoothAdapter.enable()) {
@@ -82,18 +83,18 @@ class MyViewModel : ViewModel() {
             Log.d(TAG, "btScoket: ${btSocket} ")
             btSocket?.connect()
             btconnectstates = true
-            Log.d(TAG, "Connection made.")
+            Log.d(TAG, "Connection made. ${btSocket}")
             Toast.makeText(context, "Connection made.", Toast.LENGTH_SHORT).show()
         } catch (e: IOException) {
             try {
-                btSocket?.close()
+                btSocket?.close()           //可以正常關閉
                 btconnectstates = false
 
             } catch (e2: IOException) {
                 Log.d(TAG, "Unable to end the connection")
                 Toast.makeText(context, "Unable to end the connection", Toast.LENGTH_SHORT).show()
             }
-            Log.d(TAG, "Socket creation failed")
+            Log.d(TAG, "Socket creation failed,${btSocket}")
             Toast.makeText(context, "Socket creation failed", Toast.LENGTH_SHORT).show()
         }
         //beginListenForData()
@@ -136,17 +137,18 @@ class MyViewModel : ViewModel() {
         try {
             if (err01 == false) {
                 numBytes = inStream!!.read(buffer)  // bytes returned from read()
-                Log.d(TAG, "numBytes = $numBytes")
+   //             Log.d(TAG, "numBytes = $numBytes")
             }
         } catch (e: Exception) {
    //         Log.d(TAG, "numBytes = $numBytes")
    //         Log.d(TAG, "buffer = $buffer, $e")
-            Log.d(TAG, "IOException1:")
+            Log.d(TAG, "IOException1: ${e.printStackTrace()}")
             Toast.makeText(context, "斷線了", Toast.LENGTH_SHORT).show()
+            btSocket?.close()             //關閉連線
             err01 = true
             //處理異常
          //   job.cancel()                   // 取消協程
-         //   btSocket?.close()             //關閉連線
+
         }
 
 
@@ -237,7 +239,7 @@ class MyViewModel : ViewModel() {
     }
 
     suspend fun delay200ms() {
-        Log.d(TAG, "delay200ms: ")
+   //     Log.d(TAG, "delay200ms: ")
          delay(timeMillis = 200)
         if (err01 != true) {              //都不能發生異常情況才執行
             readData()
