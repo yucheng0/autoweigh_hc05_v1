@@ -77,10 +77,10 @@ class MyViewModel : ViewModel() {
         ).show()
         mBluetoothAdapter.cancelDiscovery()
         try {
-            Log.d(TAG, "btScoket2: ${btSocket} ")
+            Log.d(TAG, "btScoket 前: ${btSocket} ")
             btSocket = device.createRfcommSocketToServiceRecord(myUUID)
             /* Here is the part the connection is made, by asking the device to create a RfcommSocket (Unsecure socket I guess), It map a port for us or something like that */
-            Log.d(TAG, "btScoket: ${btSocket} ")
+            Log.d(TAG, "btScoket 後: ${btSocket} ")
             btSocket?.connect()
             btconnectstates = true
             Log.d(TAG, "Connection made. ${btSocket}")
